@@ -1,3 +1,17 @@
+"""
+Note about environment files and virtual environments:
+
+- The real .env file (containing secret keys and database credentials) is excluded from version control
+  using .gitignore to keep sensitive data safe.
+
+- The virtual environment folder (venv) is also excluded to avoid pushing bulky dependencies.
+
+- However, we include an .env.example file in the repository as a template.
+  It contains example environment variable keys (without secrets) to guide contributors
+  in creating their own .env file with proper configuration.
+
+This approach helps keep secrets safe while making setup easier for collaborators.
+"""
 import os
 import uuid
 import psycopg2
