@@ -12,3 +12,4 @@ I have successfully completed the Human-in-the-Loop Document Summarizer challeng
 
 Thank you for the opportunity to participate in this AI project challenge!
 For the full project details and code, please visit the [GitHub repository](https://github.com/datasense0823/airproject2/blob/main/README.md).
+URL of Supabase https://supabase.com/dashboard/project/wcxxfqfqnaahrqqzzsei?showConnect=true
