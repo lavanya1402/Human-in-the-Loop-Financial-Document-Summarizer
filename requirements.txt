@@ -1,0 +1,5 @@
+ openai
+pdfplumber
+psycopg2-binary
+python-dotenv
+
