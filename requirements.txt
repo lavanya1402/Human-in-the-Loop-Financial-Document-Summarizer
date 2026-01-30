@@ -27,3 +27,5 @@ tqdm==4.67.1
 watchdog==6.0.0
 tenacity==9.1.2
 typing_extensions==4.14.1
+sqlalchemy==2.0.43
+
