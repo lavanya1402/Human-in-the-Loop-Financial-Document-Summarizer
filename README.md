@@ -34,9 +34,8 @@ This project demonstrates how to design AI systems where:
 
 ### 📐 Architecture Diagram
 
-[Download Architecture Diagram](snapshots/architecture.png)
+<img width="8192" height="1063" alt="image" src="https://github.com/user-attachments/assets/89c3fade-12ec-46a5-8a21-1d57f6893405" />
 
-![Architecture Diagram](snapshots/architecture.png)
 
 ---
 
