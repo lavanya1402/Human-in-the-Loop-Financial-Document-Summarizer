@@ -1,36 +1,50 @@
-# Core app
+# ===============================
+# Core App
+# ===============================
 streamlit==1.47.1
 pandas==2.3.1
 python-dotenv==1.1.1
 
+# ===============================
 # Google Generative AI (Gemini)
+# ===============================
 google-generativeai==0.8.3
 protobuf>=3.20.2,<6
 cachetools==6.1.0
 
-# PDF extraction
+# ===============================
+# PDF Extraction
+# ===============================
 pdfplumber==0.11.7
 pdfminer.six==20250506
 pypdfium2==4.30.0
 pillow==11.3.0
 
-# Database (Postgres/Supabase)
+# ===============================
+# Database (Supabase / Postgres)
+# ===============================
+sqlalchemy==2.0.43
 psycopg2-binary==2.9.11
 
-# Visualization + support
+# ===============================
+# Visualization + Streamlit Support
+# ===============================
 altair==5.5.0
 pydeck==0.9.1
+watchdog==6.0.0
 
+# ===============================
 # Utilities
+# ===============================
 requests==2.32.4
 tqdm==4.67.1
-watchdog==6.0.0
 tenacity==9.1.2
 typing_extensions==4.14.1
-sqlalchemy==2.0.43
-# PyTorch CPU wheels
---extra-index-url https://download.pytorch.org/whl/cpu
 
+# ===============================
+# NLP / Transformers (LOCAL CPU)
+# ===============================
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.5.1
 transformers==4.46.3
-
+sentencepiece==0.2.0
