@@ -3,22 +3,23 @@
 A **human-governed, audit-ready AI system** for summarizing financial PDF documents.  
 The system uses an LLM strictly as a **drafting assistant**, applies **deterministic quality evaluation**, and enforces **explicit human approval** before any output is persisted.
 
-This project is designed for **regulated, high-risk domains** such as finance, compliance, policy analysis, and executive reporting — where uncontrolled AI outputs are unacceptable.
+Designed for **regulated and high-risk workflows** such as finance, compliance, policy analysis, and executive reporting.
 
 ---
 
 ## Why This Project Exists (Enterprise Context)
 
-In real-world enterprise systems, **LLMs cannot be trusted as autonomous decision-makers**.
+In real-world production systems, **LLMs cannot be trusted as autonomous decision-makers**.
 
 This project demonstrates how to design AI systems where:
-- Generation, evaluation, and authority are **cleanly separated**
-- Humans retain **final control**
-- Every action is **traceable, reproducible, and auditable**
-- Regeneration is **explicitly gated**, never automatic
+
+- LLMs generate drafts, not decisions  
+- Deterministic logic evaluates quality  
+- Humans retain final authority  
+- Every action is logged and reproducible  
 
 > **Core philosophy:**  
-> *LLMs generate drafts. Deterministic systems evaluate. Humans decide.*
+> *LLMs propose. Deterministic systems evaluate. Humans decide.*
 
 ---
 
@@ -26,10 +27,14 @@ This project demonstrates how to design AI systems where:
 
 **Design principle: Separation of generation, evaluation, and authority**
 
-- LLM generates drafts only
-- Deterministic logic evaluates quality
-- Humans retain final authority
-- All decisions are logged and reproducible
+- LLM generates drafts  
+- Deterministic logic evaluates quality  
+- Humans retain final authority  
+- All decisions are logged and reproducible  
+
+### 📐 Architecture Diagram
+
+[Download Architecture Diagram](snapshots/architecture.png)
 
 ![Architecture Diagram](snapshots/architecture.png)
 
@@ -37,120 +42,113 @@ This project demonstrates how to design AI systems where:
 
 ## System Flow (High Level)
 
-1. **PDF ingestion**
-2. **Text extraction**
-3. **LLM-based summarization (draft)**
-4. **Deterministic quality scoring**
-5. **Optional PII / sensitive data checks**
-6. **Human review (approve / reject)**
-7. **Immutable persistence with full audit trail**
-8. **Optional regeneration driven only by reviewer feedback**
+1. PDF ingestion and text extraction  
+2. LLM-based summarization (draft only)  
+3. Deterministic quality scoring  
+4. Optional PII / sensitive data checks  
+5. Explicit human review  
+6. Approved or rejected persistence  
+7. Optional reviewer-driven regeneration  
 
-There are **no autonomous loops** and **no self-approving AI paths**.
+> There are **no autonomous loops** and **no self-approving AI paths**.
 
 ---
 
 ## Key Features
 
 ### 1. PDF → Text Extraction
-- Extracts readable text from uploaded PDFs using `pdfplumber`
-- Handles multi-page documents safely
-
----
+- Extracts readable text from PDFs using `pdfplumber`.
 
 ### 2. LLM Summarization (Draft-Only)
 - Uses OpenAI `chat.completions`
 - Model: `gpt-4o-mini`
-- The LLM **never writes directly to the database**
-- Output is always treated as a *proposal*, not a decision
+- Output is **never persisted directly**
 
----
+### 3. Deterministic Quality Scoring
+Evaluates summaries using rule-based logic:
+- Coverage of key financial topics  
+- Clarity via sentence-length heuristics  
+- Language quality via formatting checks  
 
-### 3. Deterministic Quality Scoring (No LLM Self-Judging)
+Flags:
+- `flagged_uncertain`
+- `flagged_too_short`
 
-Each summary is evaluated using **rule-based, explainable heuristics**:
+> Prevents the anti-pattern of *LLM judging LLM output*.
 
-**Coverage**
-- Checks presence of key financial topics
+### 4. Human-in-the-Loop Approval
+- **Approve** → stored in `approved_summaries`
+- **Reject + Feedback** → stored in `rejected_summaries`
 
-**Clarity**
-- Average sentence length heuristics
+> No summary is ever stored without explicit human consent.
 
-**Language Quality**
-- Flags formatting / grammar red flags
+### 5. Auditability & Traceability
+Logs include:
+- UUID  
+- Timestamps  
+- Decision outcome  
+- Quality flags  
+- Model + prompt version (recommended)
 
-**Hard Flags**
-- `flagged_uncertain` (e.g. “maybe”, “probably”)
-- `flagged_too_short` (< 25 words)
-
-> This avoids the anti-pattern of *“LLM judging LLM output”*.
-
----
-
-### 4. Human-in-the-Loop Approval (Authority Layer)
-
-A human reviewer explicitly decides:
-
-- **Approve**
-  - Stored in `approved_summaries`
-- **Reject + Feedback**
-  - Stored in `rejected_summaries`
-
-> No summary is persisted without human approval.
-
----
-
-### 5. Auditability & Traceability (First-Class)
-
-Every decision logs:
-- UUID
-- Timestamp
-- Decision outcome
-- Quality flags
-- Model version
-- Prompt version (recommended)
-
-This enables:
-- Compliance reviews
-- Forensic audits
-- Reproducibility of decisions
-
----
-
-### 6. Reviewer-Gated Regeneration (Optional)
-
-If a summary is rejected:
-- Reviewer feedback is stored
-- Regeneration is **explicitly triggered**
-- The system **never self-loops**
-
-> Regeneration is *reviewer-driven*, not AI-driven.
+### 6. Reviewer-Gated Regeneration
+- Regeneration is explicitly triggered by human feedback
+- The system never self-loops autonomously
 
 ---
 
 ## Environment & Secrets Management
 
-- Real secrets live in `.env` (excluded via `.gitignore`)
-- Repository includes `.env.example` as a template
-- Virtual environments are excluded (`venv/`)
+- `.env` contains real secrets and is excluded via `.gitignore`
+- `.env.example` is provided as a safe template
+- Virtual environments (`venv/`) are excluded
 
-This ensures:
-- No credential leaks
-- Easy onboarding for collaborators
-- Enterprise-safe configuration practices
+This follows **enterprise security best practices**.
 
 ---
 
-## Tech Stack
+## Project Structure
 
-- **Language:** Python
-- **LLM:** OpenAI (`gpt-4o-mini`)
-- **PDF Processing:** `pdfplumber`
-- **Database:** PostgreSQL
-- **DB Driver:** `psycopg2-binary`
-- **Config:** `python-dotenv`
+├── main.py
+├── score_logic.py
+├── schema.sql
+├── requirements.txt
+├── README.md
+├── .env.example
+├── snapshots/
+│ ├── uploads/
+│ │ └── *.pdf
+│ └── architecture.png
+
 
 ---
 
-## Suggested Folder Structure
+## What This Project Demonstrates (Hiring Signal)
 
+This project intentionally demonstrates:
+
+- Human authority over AI  
+- Deterministic evaluation over probabilistic judgment  
+- Safe AI patterns for regulated domains  
+- Production-grade auditability  
+- Clear separation of concerns  
+
+> This is **not** a chatbot demo.  
+> This is a **governed AI workflow**.
+
+---
+
+## Future Extensions (Not Implemented, By Design)
+
+Possible extensions if deployed at scale:
+- Role-based reviewers  
+- Batch document processing  
+- Analytics on rejection reasons  
+- Policy-based approval thresholds  
+
+These are intentionally excluded to keep the system **controlled, explainable, and audit-safe**.
+
+---
+
+## License
+
+MIT (or your preferred license)
