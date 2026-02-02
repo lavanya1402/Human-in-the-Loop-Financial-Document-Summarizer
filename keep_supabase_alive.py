@@ -19,4 +19,4 @@ def ping():
 if __name__ == "__main__":
     while True:
         ping()
-        time.sleep(int(os.getenv("PING_INTERVAL_SECONDS", "600")))
+        time.sleep(int(os.getenv("PING_INTERVAL_SECONDS", "300")))

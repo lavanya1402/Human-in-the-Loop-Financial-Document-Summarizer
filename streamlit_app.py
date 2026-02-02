@@ -1,5 +1,5 @@
 # ========================================
-# 💹 Human-in-the-Loop Financial Summarizer
+# 💹 Human-in-the-Loop Financial Summarizer (Next-Level)
 # ========================================
 
 import os
@@ -9,6 +9,7 @@ import uuid
 import tempfile
 from typing import List, Tuple, Dict
 from collections import Counter
+from urllib.parse import urlparse
 
 import pandas as pd
 import pdfplumber
@@ -56,24 +57,81 @@ h1,h2,h3 {color:#0f172a;}
     unsafe_allow_html=True,
 )
 
-# -----------------------------
-# ⚙️ Environment & Database
-# -----------------------------
-load_dotenv()
+# ======================================================
+# ⚙️ ENV + SECRETS (local vs cloud) — SAFE, NO CRASH
+# ======================================================
 
-DB_URL = os.getenv("DB_URL", "").strip()
+load_dotenv()  # local only, cloud typically ignores .env
+
+def _safe_secrets_get(key: str, default: str = "") -> str:
+    """
+    Streamlit local me secrets.toml absent ho sakta hai.
+    st.secrets access sometimes throws StreamlitSecretNotFoundError.
+    So: try/except and fallback.
+    """
+    try:
+        return str(st.secrets.get(key, default)).strip()
+    except Exception:
+        return default
+
+def _env_get(key: str, default: str = "") -> str:
+    return str(os.getenv(key, default)).strip()
+
+def get_db_url() -> str:
+    """
+    Priority:
+    1) Streamlit Cloud: DB_URL_POOLER (recommended)
+    2) Streamlit Cloud/Local: DB_URL (generic)
+    3) Local: .env DB_URL_DIRECT
+    4) Local: .env DB_URL
+    """
+    # cloud recommended
+    pooler = _safe_secrets_get("DB_URL_POOLER", "")
+    if pooler:
+        return pooler
+
+    # generic secret
+    secret_db = _safe_secrets_get("DB_URL", "")
+    if secret_db:
+        return secret_db
+
+    # local .env preference (direct)
+    direct = _env_get("DB_URL_DIRECT", "")
+    if direct:
+        return direct
+
+    # fallback local env
+    return _env_get("DB_URL", "")
+
+DB_URL = get_db_url()
+
+DEBUG_DB = (_safe_secrets_get("DEBUG_DB", "") or _env_get("DEBUG_DB", "0")).strip()
+DEBUG_DB = DEBUG_DB in ("1", "true", "True", "yes", "YES")
+
 if not DB_URL:
-    st.error("❌ DB_URL missing. Add it in your .env (Supabase Postgres connection string).")
+    st.error("❌ DB_URL missing. Add in Streamlit Secrets (cloud) or .env (local).")
     st.stop()
 
-ENGINE = create_engine(DB_URL, pool_pre_ping=True)
+# ======================================================
+# 🧠 SQLAlchemy Engine (production-friendly pooling)
+# ======================================================
 
-# -----------------------------
-# 🗃️ Create tables if missing
-# -----------------------------
-def ensure_tables():
-    with ENGINE.begin() as conn:
-        conn.execute(text("""
+ENGINE = create_engine(
+    DB_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,   # keeps connections fresh
+    pool_size=3,
+    max_overflow=2,
+)
+
+# ======================================================
+# 🗃️ Migrations (schema_migrations + tables + indexes)
+# ======================================================
+
+MIGRATIONS = [
+    {
+        "id": "001_init_tables",
+        "sql": """
         CREATE TABLE IF NOT EXISTS public.approved_summaries (
             id UUID PRIMARY KEY,
             original_text TEXT NOT NULL,
@@ -85,9 +143,7 @@ def ensure_tables():
             feedback TEXT,
             approved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-        """))
 
-        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS public.rejected_summaries (
             id UUID PRIMARY KEY,
             original_text TEXT NOT NULL,
@@ -99,17 +155,102 @@ def ensure_tables():
             rejected_by TEXT NOT NULL,
             rejected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        """,
+    },
+    {
+        "id": "002_audit_events",
+        "sql": """
+        CREATE TABLE IF NOT EXISTS public.audit_events (
+            id UUID PRIMARY KEY,
+            event_type TEXT NOT NULL,     -- APPROVE / REJECT / ERROR / etc
+            reviewer TEXT NOT NULL,
+            doc_id UUID,
+            score INTEGER,
+            message TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
+    },
+    {
+        "id": "003_indexes",
+        "sql": """
+        CREATE INDEX IF NOT EXISTS idx_approved_time ON public.approved_summaries (approved_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_rejected_time ON public.rejected_summaries (rejected_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_time ON public.audit_events (created_at DESC);
+        """,
+    },
+]
+
+def run_migrations():
+    with ENGINE.begin() as conn:
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS public.schema_migrations (
+            id TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
         """))
 
+        applied = {r[0] for r in conn.execute(text("SELECT id FROM public.schema_migrations")).fetchall()}
+
+        for m in MIGRATIONS:
+            if m["id"] in applied:
+                continue
+            conn.execute(text(m["sql"]))
+            conn.execute(text("INSERT INTO public.schema_migrations (id) VALUES (:id)"), {"id": m["id"]})
+
+def log_event(event_type: str, reviewer: str, doc_id=None, score=None, message=None):
+    payload = {
+        "id": str(uuid.uuid4()),
+        "event_type": event_type,
+        "reviewer": reviewer,
+        "doc_id": str(doc_id) if doc_id else None,
+        "score": score,
+        "message": message,
+    }
+    with ENGINE.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO public.audit_events (id, event_type, reviewer, doc_id, score, message)
+            VALUES (:id, :event_type, :reviewer, :doc_id, :score, :message)
+        """), payload)
+
+# Run migrations at startup
 try:
-    ensure_tables()
+    run_migrations()
 except Exception as e:
-    st.error(f"❌ Database initialization failed: {e}")
+    st.error(f"❌ Database initialization (migrations) failed: {e}")
     st.stop()
 
-# -----------------------------
+# ======================================================
+# 🔎 Safe DB Debug (only when DEBUG_DB=1)
+# ======================================================
+
+def debug_db_info():
+    u = urlparse(DB_URL)
+    # DO NOT print password
+    host = u.hostname
+    port = u.port
+    user = u.username
+    dbname = (u.path or "").lstrip("/") or ""
+    st.success("✅ DB_URL loaded")
+    st.write("host:", host)
+    st.write("port:", port)
+    st.write("user:", user)
+    st.write("database:", f"/{dbname}")
+
+    # smoke query
+    try:
+        with ENGINE.connect() as conn:
+            result = conn.execute(text("SELECT NOW();")).fetchone()
+        st.success("✅ Database connection successful!")
+        st.write("Server time:", result[0])
+    except Exception as e:
+        st.error("❌ Connection failed")
+        st.code(str(e))
+
+# ======================================================
 # 🧠 Summarizer (Local Models)
-# -----------------------------
+# ======================================================
+
 @st.cache_resource(show_spinner=False)
 def get_summarizer(mode: str):
     # NOTE: t5-small needs sentencepiece. If you don't want that dependency, remove Ultra-Fast option.
@@ -123,9 +264,10 @@ def get_summarizer(mode: str):
     tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False)
     return pipeline("summarization", model=model, tokenizer=tokenizer, device=-1)
 
-# -----------------------------
+# ======================================================
 # 📄 PDF Processing
-# -----------------------------
+# ======================================================
+
 def extract_text_from_pdf(path: str) -> str:
     pages = []
     with pdfplumber.open(path) as pdf:
@@ -136,7 +278,6 @@ def extract_text_from_pdf(path: str) -> str:
     return "\n".join(pages)
 
 def clean_text(txt: str) -> str:
-    # keep basic ascii; pdf text may have odd chars
     txt = re.sub(r"[^\x09\x0A\x0D\x20-\x7E]", " ", txt)
     txt = re.sub(r"\s{2,}", " ", txt)
     return txt.strip()
@@ -158,15 +299,15 @@ def chunk_text(text: str, tokenizer, max_tokens: int) -> List[str]:
         chunks.append(" ".join(current))
     return chunks
 
-# -----------------------------
+# ======================================================
 # 🧾 Summarization Pipeline
-# -----------------------------
+# ======================================================
+
 def summarize_text(text: str, mode: str, detail: str, placeholder):
     summarizer = get_summarizer(mode)
     tokenizer = summarizer.tokenizer
 
     cleaned = clean_text(text)
-    # safe chunk limit
     model_max = getattr(tokenizer, "model_max_length", 512)
     limit = int(0.85 * model_max)
 
@@ -192,9 +333,10 @@ def summarize_text(text: str, mode: str, detail: str, placeholder):
     elapsed = int(time.time() - start)
     return final, elapsed
 
-# -----------------------------
+# ======================================================
 # 📊 Scoring Logic (Dynamic)
-# -----------------------------
+# ======================================================
+
 _FIN_TERMS = {
     "revenue","sales","profit","loss","ebitda","margin","cash","cash flow",
     "operating","net","expense","guidance","forecast","outlook","risk",
@@ -216,29 +358,23 @@ def score_summary(summary: str) -> Tuple[int, bool, bool, Dict]:
     too_short = wc < 60
     uncertain = any(u in summary.lower() for u in _UNCERTAIN)
 
-    # baseline then adjust
     score = 5.0
 
-    # financial coverage
     coverage_hits = sum(1 for t in _FIN_TERMS if t in summary.lower())
     score += min(coverage_hits * 0.25, 2.5)
 
-    # numbers / %
     num_hits = len(re.findall(r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b", summary))
     pct_hits = summary.count("%")
     score += min(0.75 + 0.15 * min(num_hits, 5) + 0.15 * min(pct_hits, 4), 1.5)
 
-    # uncertainty penalty
     if uncertain:
         score -= 1.5
 
-    # length penalty
     if too_short:
         score -= 2.0
     elif wc > 350:
         score -= 1.0
 
-    # repetition penalty (simple)
     meaningful = [w for w in words if w not in _STOPWORDS]
     freq = Counter(meaningful)
     top = freq.most_common(5)
@@ -258,9 +394,10 @@ def score_summary(summary: str) -> Tuple[int, bool, bool, Dict]:
     }
     return score, uncertain, too_short, breakdown
 
-# -----------------------------
+# ======================================================
 # 💾 Database Inserts
-# -----------------------------
+# ======================================================
+
 def insert_row(table: str, payload: dict):
     with ENGINE.begin() as conn:
         if table == "approved":
@@ -276,11 +413,17 @@ def insert_row(table: str, payload: dict):
             VALUES (:id,:o,:s,:sc,:u,:t,:fb,:by)
             """), payload)
 
-# -----------------------------
+# ======================================================
 # 🚀 UI
-# -----------------------------
+# ======================================================
+
 st.title("Human-in-the-Loop Financial Summarizer")
 st.caption("Local • Private • Auditable • Supabase-backed")
+
+# Optional debug panel
+if DEBUG_DB:
+    with st.expander("🔎 Supabase Connection Debug (safe)"):
+        debug_db_info()
 
 mode = st.sidebar.radio("Speed", ["Ultra-Fast", "Fast", "Quality"], index=1, key="speed_mode")
 detail = st.sidebar.select_slider("Detail", ["Concise","Balanced","Detailed"], value="Balanced", key="detail_level")
@@ -303,10 +446,14 @@ if uploaded:
 
     st.success("✅ PDF uploaded and text extracted.")
 
-    # Keep summary in session so form reruns don't break it
     if st.button("🧠 Generate Summary", type="primary"):
         holder = st.empty()
-        summary, elapsed = summarize_text(text_data, st.session_state["speed_mode"], st.session_state["detail_level"], holder)
+        summary, elapsed = summarize_text(
+            text_data,
+            st.session_state["speed_mode"],
+            st.session_state["detail_level"],
+            holder
+        )
 
         score, uncertain, too_short, breakdown = score_summary(summary)
 
@@ -344,7 +491,6 @@ if "summary" in st.session_state and st.session_state["summary"]:
     st.markdown("### ✅ Review & Store")
     st.caption("Choose Approve/Reject and submit. Reject will go to rejected_summaries.")
 
-    # ✅ FIXED: stable keys + session_state read on submit
     with st.form("review_form", clear_on_submit=False):
         reviewer = st.text_input("Your Name", key="reviewer_name")
         decision = st.radio("Decision", ["Approve", "Reject"], horizontal=True, key="decision_choice")
@@ -363,8 +509,9 @@ if "summary" in st.session_state and st.session_state["summary"]:
             st.error("Please provide feedback / reason.")
             st.stop()
 
+        doc_id = str(uuid.uuid4())
         payload = {
-            "id": str(uuid.uuid4()),
+            "id": doc_id,
             "o": text_data,
             "s": summary,
             "sc": int(score),
@@ -377,18 +524,28 @@ if "summary" in st.session_state and st.session_state["summary"]:
         try:
             if decision == "Approve":
                 insert_row("approved", payload)
+                log_event("APPROVE", reviewer.strip(), doc_id=doc_id, score=int(score), message=feedback.strip())
                 st.success("✅ Saved to approved_summaries")
             else:
                 insert_row("rejected", payload)
+                log_event("REJECT", reviewer.strip(), doc_id=doc_id, score=int(score), message=feedback.strip())
                 st.warning("❌ Saved to rejected_summaries")
+
             st.session_state["_refresh_key"] = str(uuid.uuid4())
             st.rerun()
+
         except Exception as e:
+            # audit error too
+            try:
+                log_event("ERROR", reviewer.strip(), doc_id=doc_id, score=int(score), message=str(e)[:500])
+            except Exception:
+                pass
             st.error(f"❌ DB insert failed: {e}")
 
-# -----------------------------
-# 📊 History
-# -----------------------------
+# ======================================================
+# 📊 History (Approved + Rejected)
+# ======================================================
+
 st.markdown("---")
 st.markdown("### 📊 Review History")
 
@@ -421,5 +578,23 @@ except Exception as e:
 if st.button("↻ Refresh history"):
     st.session_state["_refresh_key"] = str(uuid.uuid4())
     st.rerun()
+
+# ======================================================
+# 🧾 Audit Trail (Next Level)
+# ======================================================
+
+st.markdown("### 🧾 Audit Trail (events)")
+with st.expander("Show audit events"):
+    try:
+        with ENGINE.connect() as conn:
+            df_audit = pd.read_sql("""
+                SELECT event_type, reviewer, doc_id::text AS doc_id, score, message, created_at
+                FROM public.audit_events
+                ORDER BY created_at DESC
+                LIMIT 50;
+            """, conn)
+        st.dataframe(df_audit, use_container_width=True)
+    except Exception as e:
+        st.error(f"Audit load failed: {e}")
 
 st.markdown("<div class='small-note'>— Made with ❤️ by Lavanya Srivastava</div>", unsafe_allow_html=True)
