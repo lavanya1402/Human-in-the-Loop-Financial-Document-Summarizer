@@ -32,10 +32,9 @@ This project demonstrates how to design AI systems where:
 - Humans retain final authority  
 - All decisions are logged and reproducible  
 
-### 📐 Architecture Diagram
+## Architecture Diagram
 
-<img width="8192" height="1063" alt="image" src="https://github.com/user-attachments/assets/89c3fade-12ec-46a5-8a21-1d57f6893405" />
-
+![Architecture](assets/architecture.png)
 
 ---
 
