@@ -1,46 +1,25 @@
 # Human-in-the-Loop Financial Document Summarizer
 
-A **human-governed, audit-ready AI system** for summarizing financial PDF documents.
-The system uses an LLM strictly as a **drafting assistant**, applies **deterministic quality evaluation**, and enforces **explicit human approval** before any output is persisted.
+![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Streamlit](https://img.shields.io/badge/UI-Streamlit-red) ![LLM](https://img.shields.io/badge/LLM-OpenAI-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Designed for **regulated and high-risk workflows** such as finance, compliance, policy analysis, and executive reporting.
+A governed AI workflow that summarizes financial PDFs using LLMs while enforcing:
 
----
+* deterministic scoring
+* human approval
+* audit logging
+* safe persistence
 
-## Why This Project Exists (Enterprise Context)
+Designed for regulated environments where AI assists decisions but never replaces human authority.
 
-In real-world production systems, **LLMs cannot be trusted as autonomous decision-makers**.
-
-This project demonstrates how to design AI systems where:
-
-* LLMs generate drafts, not decisions
-* Deterministic logic evaluates quality
-* Humans retain final authority
-* Every action is logged and reproducible
-
-> **Core philosophy:**
-> *LLMs propose. Deterministic systems evaluate. Humans decide.*
+> **LLMs propose. Deterministic systems evaluate. Humans decide.**
 
 ---
 
 ## Architecture
 
-**Design principle: Separation of generation, evaluation, and authority**
+<img src="assets/architecture.svg" width="1000"/>
 
-* LLM generates drafts
-* Deterministic logic evaluates quality
-* Humans retain final authority
-* All decisions are logged and reproducible
-
----
-
-## Architecture Diagram
-
-<img src="assets/BM25%20Driven%20CRAG%20Pipeline-2026-02-05-064557.svg" width="1000"/>
-
----
-
-## Mermaid Architecture Source
+### Mermaid Architecture Source
 
 ```mermaid
 graph TB
@@ -93,128 +72,103 @@ class Approved,Rejected,Events data;
 
 ---
 
-## System Flow (High Level)
+## Tech Stack
 
-1. PDF ingestion and text extraction
-2. LLM-based summarization (draft only)
-3. Deterministic quality scoring
-4. Optional PII / sensitive data checks
-5. Explicit human review
-6. Approved or rejected persistence
-7. Optional reviewer-driven regeneration
-
-> There are **no autonomous loops** and **no self-approving AI paths**.
+* Python
+* Streamlit
+* OpenAI GPT-4o / HF pipeline
+* pdfplumber
+* PostgreSQL / Supabase
+* Deterministic scoring engine
+* Audit logging layer
 
 ---
 
-## Key Features
+## Demo
 
-### 1. PDF → Text Extraction
+### Application Screenshot
 
-* Extracts readable text from PDFs using `pdfplumber`.
-
-### 2. LLM Summarization (Draft-Only)
-
-* Uses OpenAI `chat.completions`
-* Model: `gpt-4o-mini`
-* Output is **never persisted directly**
-
-### 3. Deterministic Quality Scoring
-
-Evaluates summaries using rule-based logic:
-
-* Coverage of key financial topics
-* Clarity via sentence-length heuristics
-* Language quality via formatting checks
-
-Flags:
-
-* `flagged_uncertain`
-* `flagged_too_short`
-
-> Prevents the anti-pattern of *LLM judging LLM output*.
-
-### 4. Human-in-the-Loop Approval
-
-* **Approve** → stored in `approved_summaries`
-* **Reject + Feedback** → stored in `rejected_summaries`
-
-> No summary is ever stored without explicit human consent.
-
-### 5. Auditability & Traceability
-
-Logs include:
-
-* UUID
-* Timestamps
-* Decision outcome
-* Quality flags
-* Model + prompt version (recommended)
-
-### 6. Reviewer-Gated Regeneration
-
-* Regeneration is explicitly triggered by human feedback
-* The system never self-loops autonomously
+![App Screenshot](assets/screenshot1.png)
 
 ---
 
-## Environment & Secrets Management
+## Quick Start
 
-* `.env` contains real secrets and is excluded via `.gitignore`
-* `.env.example` is provided as a safe template
-* Virtual environments (`venv/`) are excluded
+```bash
+git clone https://github.com/yourname/project.git
+cd project
 
-This follows **enterprise security best practices**.
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
 
 ---
 
-## Project Structure
+## Folder Structure (Matches Your Repo)
 
 ```
-├── main.py
-├── score_logic.py
-├── schema.sql
-├── requirements.txt
+project/
 ├── README.md
-├── .env.example
-├── snapshots/
-│   ├── uploads/
-│   │   └── *.pdf
-├── assets/
-│   └── architecture.svg
+├── requirements.txt
+├── schema.sql
+├── main.py
+├── streamlit_app.py
+├── score_logic.py
+├── db_smoke.py
+├── keep_supabase_alive.py
+└── assets/
+    ├── architecture.svg
+    └── screenshot1.png
 ```
 
 ---
 
-## What This Project Demonstrates (Hiring Signal)
+## Impact
 
-This project intentionally demonstrates:
+This project demonstrates production-safe AI patterns:
 
-* Human authority over AI
-* Deterministic evaluation over probabilistic judgment
-* Safe AI patterns for regulated domains
-* Production-grade auditability
-* Clear separation of concerns
+✅ human authority over AI
+✅ deterministic validation over probabilistic trust
+✅ audit-ready architecture
+✅ enterprise AI governance
+✅ regulated-domain workflow design
 
-> This is **not** a chatbot demo.
-> This is a **governed AI workflow**.
-
----
-
-## Future Extensions (Not Implemented, By Design)
-
-Possible extensions if deployed at scale:
-
-* Role-based reviewers
-* Batch document processing
-* Analytics on rejection reasons
-* Policy-based approval thresholds
-
-These are intentionally excluded to keep the system **controlled, explainable, and audit-safe**.
+This is not a chatbot demo.
+This is a governed AI system.
 
 ---
 
 ## License
 
-MIT (or your preferred license)
+MIT
 
+---
+
+## How to Add Screenshot
+
+1. Create folder:
+
+```
+assets/
+```
+
+2. Drag screenshot from desktop:
+
+```
+assets/screenshot1.png
+```
+
+3. README already references it:
+
+```md
+![App Screenshot](assets/screenshot1.png)
+```
+
+
+
+Main ready hoon 😄
+
+Best regards,
