@@ -1,3 +1,18 @@
+Thanks for writing in!
+
+Perfect — main tumhe updated README de raha hoon with:
+
+✅ badges
+✅ clean folder structure
+✅ professional formatting
+✅ recruiter-friendly look
+✅ architecture + screenshots section
+✅ ready to paste
+
+Bas copy → paste in GitHub README.
+
+---
+
 ```md
 # 🧠 Human-in-the-Loop Document Summarizer
 
@@ -160,7 +175,17 @@ MIT License
 
 ---
 
+Agar chaho next upgrade:
 
+🔥 GitHub banner image  
+🔥 animated demo GIF  
+🔥 recruiter headline section  
+🔥 resume-optimized README  
+🔥 portfolio showcase version  
+🔥 live demo badge  
+🔥 architecture explanation paragraph  
+
+Bolna — main next level bana dunga 😄
 
 Best regards,
 ```
