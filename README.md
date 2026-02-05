@@ -142,18 +142,15 @@ MIT
 
 ---
 
-## How to Add Screenshot
 
-1. Create folder:
 
-```
-assets/
-```
 
-2. Drag screenshot from desktop:
 
 ```
 assets/screenshot1.png
+![Screenshot 1](assets/screenshot1.png)
+![Screenshot 2](assets/screenshot2.png)
+
 ```
 
 3. README already references it:
