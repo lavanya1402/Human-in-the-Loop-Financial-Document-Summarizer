@@ -38,6 +38,10 @@ This project demonstrates how to design AI systems where:
 
 <img src="assets/BM25%20Driven%20CRAG%20Pipeline-2026-02-05-064557.svg" width="1000"/>
 
+---
+
+## Mermaid Architecture Source
+
 ```mermaid
 graph TB
 
@@ -85,7 +89,21 @@ class UI,Reviewer frontend;
 class Upload,Extract,Clean,Summ,Score processing;
 class Gate,Decision,Audit governance;
 class Approved,Rejected,Events data;
+```
 
+---
+
+## System Flow (High Level)
+
+1. PDF ingestion and text extraction
+2. LLM-based summarization (draft only)
+3. Deterministic quality scoring
+4. Optional PII / sensitive data checks
+5. Explicit human review
+6. Approved or rejected persistence
+7. Optional reviewer-driven regeneration
+
+> There are **no autonomous loops** and **no self-approving AI paths**.
 
 ---
 
@@ -162,7 +180,6 @@ This follows **enterprise security best practices**.
 ├── snapshots/
 │   ├── uploads/
 │   │   └── *.pdf
-│   └── architecture.svg
 ├── assets/
 │   └── architecture.svg
 ```
@@ -199,5 +216,5 @@ These are intentionally excluded to keep the system **controlled, explainable, a
 
 ## License
 
-MIT 
+MIT (or your preferred license)
 
