@@ -9,7 +9,7 @@ A governed AI workflow that summarizes financial PDFs using LLMs while enforcing
 * audit logging
 * safe persistence
 
-Designed for regulated environments where AI assists decisions but never replaces human authority.
+Designed for regulated environments where AI assists decisions but never replaces  human authority.
 
 > **LLMs propose. Deterministic systems evaluate. Humans decide.**
 
