@@ -159,17 +159,7 @@ MIT License
 
 ---
 
-Agar chaho next upgrade:
 
-🔥 GitHub banner image  
-🔥 animated demo GIF  
-🔥 recruiter headline section  
-🔥 resume-optimized README  
-🔥 portfolio showcase version  
-🔥 live demo badge  
-🔥 architecture explanation paragraph  
-
-Bolna — main next level bana dunga 😄
 
 Best regards,
 ```
