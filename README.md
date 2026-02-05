@@ -84,11 +84,6 @@ class Approved,Rejected,Events data;
 
 ---
 
-## Demo
-
-### Application Screenshot
-
-![App Screenshot](assets/screenshot1.png)
 
 ---
 
