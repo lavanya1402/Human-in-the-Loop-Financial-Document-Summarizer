@@ -38,9 +38,6 @@ This project demonstrates how to design AI systems where:
 
 <img src="assets/BM25%20Driven%20CRAG%20Pipeline-2026-02-05-064557.svg" width="1000"/>
 
-<details>
-<summary>Mermaid source (click to expand)</summary>
-
 ```mermaid
 graph TB
 
@@ -88,23 +85,7 @@ class UI,Reviewer frontend;
 class Upload,Extract,Clean,Summ,Score processing;
 class Gate,Decision,Audit governance;
 class Approved,Rejected,Events data;
-```
 
-</details>
-
----
-
-## System Flow (High Level)
-
-1. PDF ingestion and text extraction
-2. LLM-based summarization (draft only)
-3. Deterministic quality scoring
-4. Optional PII / sensitive data checks
-5. Explicit human review
-6. Approved or rejected persistence
-7. Optional reviewer-driven regeneration
-
-> There are **no autonomous loops** and **no self-approving AI paths**.
 
 ---
 
