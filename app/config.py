@@ -3,6 +3,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
+
 load_dotenv()  # local support; safe on cloud too
 
 def _safe_secrets_get(key: str, default: str = "") -> str:

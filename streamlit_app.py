@@ -14,11 +14,22 @@ from urllib.parse import urlparse
 import pandas as pd
 import pdfplumber
 import streamlit as st
+from sqlalchemy import text
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+load_dotenv()  # MUST be before importing app.db
+
+from app.db import ENGINE, MIGRATIONS_ENGINE, show_db_debug_ui
 
 # HuggingFace (local summarization)
 from transformers import pipeline, AutoTokenizer
+
+# ✅ Use your centralized DB module (local vs cloud handled there)
+from app.db import ENGINE, MIGRATIONS_ENGINE, show_db_debug_ui
+
+# ✅ Your scoring file exists at project ROOT (not in app/)
+# If you want, later we can move it inside app/ folder cleanly.
+# from score_logic import score_summary  # (optional if you want to reuse)
+# But your current code includes its own scoring; we'll keep that below.
 
 # -----------------------------
 # 🪟 Windows tokenizer fix
@@ -57,72 +68,8 @@ h1,h2,h3 {color:#0f172a;}
     unsafe_allow_html=True,
 )
 
-# ======================================================
-# ⚙️ ENV + SECRETS (local vs cloud) — SAFE, NO CRASH
-# ======================================================
-
-load_dotenv()  # local only, cloud typically ignores .env
-
-def _safe_secrets_get(key: str, default: str = "") -> str:
-    """
-    Streamlit local me secrets.toml absent ho sakta hai.
-    st.secrets access sometimes throws StreamlitSecretNotFoundError.
-    So: try/except and fallback.
-    """
-    try:
-        return str(st.secrets.get(key, default)).strip()
-    except Exception:
-        return default
-
-def _env_get(key: str, default: str = "") -> str:
-    return str(os.getenv(key, default)).strip()
-
-def get_db_url() -> str:
-    """
-    Priority:
-    1) Streamlit Cloud: DB_URL_POOLER (recommended)
-    2) Streamlit Cloud/Local: DB_URL (generic)
-    3) Local: .env DB_URL_DIRECT
-    4) Local: .env DB_URL
-    """
-    # cloud recommended
-    pooler = _safe_secrets_get("DB_URL_POOLER", "")
-    if pooler:
-        return pooler
-
-    # generic secret
-    secret_db = _safe_secrets_get("DB_URL", "")
-    if secret_db:
-        return secret_db
-
-    # local .env preference (direct)
-    direct = _env_get("DB_URL_DIRECT", "")
-    if direct:
-        return direct
-
-    # fallback local env
-    return _env_get("DB_URL", "")
-
-DB_URL = get_db_url()
-
-DEBUG_DB = (_safe_secrets_get("DEBUG_DB", "") or _env_get("DEBUG_DB", "0")).strip()
-DEBUG_DB = DEBUG_DB in ("1", "true", "True", "yes", "YES")
-
-if not DB_URL:
-    st.error("❌ DB_URL missing. Add in Streamlit Secrets (cloud) or .env (local).")
-    st.stop()
-
-# ======================================================
-# 🧠 SQLAlchemy Engine (production-friendly pooling)
-# ======================================================
-
-ENGINE = create_engine(
-    DB_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,   # keeps connections fresh
-    pool_size=3,
-    max_overflow=2,
-)
+# ✅ Safe debug expander (shows only host/port/user; no passwords)
+show_db_debug_ui()
 
 # ======================================================
 # 🗃️ Migrations (schema_migrations + tables + indexes)
@@ -162,7 +109,7 @@ MIGRATIONS = [
         "sql": """
         CREATE TABLE IF NOT EXISTS public.audit_events (
             id UUID PRIMARY KEY,
-            event_type TEXT NOT NULL,     -- APPROVE / REJECT / ERROR / etc
+            event_type TEXT NOT NULL,
             reviewer TEXT NOT NULL,
             doc_id UUID,
             score INTEGER,
@@ -182,7 +129,10 @@ MIGRATIONS = [
 ]
 
 def run_migrations():
-    with ENGINE.begin() as conn:
+    # ✅ IMPORTANT: DDL should run on DIRECT DB (5432) when available
+    engine_for_ddl = MIGRATIONS_ENGINE or ENGINE
+
+    with engine_for_ddl.begin() as conn:
         conn.execute(text("""
         CREATE TABLE IF NOT EXISTS public.schema_migrations (
             id TEXT PRIMARY KEY,
@@ -190,13 +140,18 @@ def run_migrations():
         );
         """))
 
-        applied = {r[0] for r in conn.execute(text("SELECT id FROM public.schema_migrations")).fetchall()}
+        applied = {
+            r[0] for r in conn.execute(text("SELECT id FROM public.schema_migrations")).fetchall()
+        }
 
         for m in MIGRATIONS:
             if m["id"] in applied:
                 continue
             conn.execute(text(m["sql"]))
-            conn.execute(text("INSERT INTO public.schema_migrations (id) VALUES (:id)"), {"id": m["id"]})
+            conn.execute(
+                text("INSERT INTO public.schema_migrations (id) VALUES (:id)"),
+                {"id": m["id"]},
+            )
 
 def log_event(event_type: str, reviewer: str, doc_id=None, score=None, message=None):
     payload = {
@@ -221,31 +176,22 @@ except Exception as e:
     st.stop()
 
 # ======================================================
-# 🔎 Safe DB Debug (only when DEBUG_DB=1)
+# 🔎 Optional Safe DB quick check (NO PASSWORD)
 # ======================================================
 
-def debug_db_info():
-    u = urlparse(DB_URL)
-    # DO NOT print password
+def safe_show_current_connection():
+    # We'll parse from ENGINE.url without printing password
+    try:
+        u = urlparse(str(ENGINE.url))
+    except Exception:
+        return
+
     host = u.hostname
     port = u.port
     user = u.username
     dbname = (u.path or "").lstrip("/") or ""
-    st.success("✅ DB_URL loaded")
-    st.write("host:", host)
-    st.write("port:", port)
-    st.write("user:", user)
-    st.write("database:", f"/{dbname}")
 
-    # smoke query
-    try:
-        with ENGINE.connect() as conn:
-            result = conn.execute(text("SELECT NOW();")).fetchone()
-        st.success("✅ Database connection successful!")
-        st.write("Server time:", result[0])
-    except Exception as e:
-        st.error("❌ Connection failed")
-        st.code(str(e))
+    st.caption(f"DB connected ✅  host: {host}  port: {port}  user: {user}  db: /{dbname}")
 
 # ======================================================
 # 🧠 Summarizer (Local Models)
@@ -253,9 +199,8 @@ def debug_db_info():
 
 @st.cache_resource(show_spinner=False)
 def get_summarizer(mode: str):
-    # NOTE: t5-small needs sentencepiece. If you don't want that dependency, remove Ultra-Fast option.
     if mode == "Ultra-Fast":
-        model = "t5-small"
+        model = "t5-small"  # needs sentencepiece sometimes
     elif mode == "Fast":
         model = "sshleifer/distilbart-cnn-12-6"
     else:
@@ -282,8 +227,8 @@ def clean_text(txt: str) -> str:
     txt = re.sub(r"\s{2,}", " ", txt)
     return txt.strip()
 
-def chunk_text(text: str, tokenizer, max_tokens: int) -> List[str]:
-    words = text.split()
+def chunk_text(text_: str, tokenizer, max_tokens: int) -> List[str]:
+    words = text_.split()
     chunks, current, count = [], [], 0
 
     for w in words:
@@ -303,11 +248,11 @@ def chunk_text(text: str, tokenizer, max_tokens: int) -> List[str]:
 # 🧾 Summarization Pipeline
 # ======================================================
 
-def summarize_text(text: str, mode: str, detail: str, placeholder):
+def summarize_text(text_: str, mode: str, detail: str, placeholder):
     summarizer = get_summarizer(mode)
     tokenizer = summarizer.tokenizer
 
-    cleaned = clean_text(text)
+    cleaned = clean_text(text_)
     model_max = getattr(tokenizer, "model_max_length", 512)
     limit = int(0.85 * model_max)
 
@@ -324,13 +269,15 @@ def summarize_text(text: str, mode: str, detail: str, placeholder):
     placeholder.info(f"📘 Processing {len(chunks)} chunk(s)…")
     start = time.time()
 
+    prog = st.progress(0, text="Starting…")
     for i, ch in enumerate(chunks, 1):
         out = summarizer(ch, max_length=max_len, min_length=min_len, do_sample=False)[0]["summary_text"]
         results.append(out)
-        placeholder.progress(i / max(1, len(chunks)), text=f"Summarized {i}/{len(chunks)}")
+        prog.progress(i / max(1, len(chunks)), text=f"Summarized {i}/{len(chunks)}")
 
     final = " ".join(results).strip()
     elapsed = int(time.time() - start)
+    prog.empty()
     return final, elapsed
 
 # ======================================================
@@ -420,10 +367,7 @@ def insert_row(table: str, payload: dict):
 st.title("Human-in-the-Loop Financial Summarizer")
 st.caption("Local • Private • Auditable • Supabase-backed")
 
-# Optional debug panel
-if DEBUG_DB:
-    with st.expander("🔎 Supabase Connection Debug (safe)"):
-        debug_db_info()
+safe_show_current_connection()
 
 mode = st.sidebar.radio("Speed", ["Ultra-Fast", "Fast", "Quality"], index=1, key="speed_mode")
 detail = st.sidebar.select_slider("Detail", ["Concise","Balanced","Detailed"], value="Balanced", key="detail_level")
@@ -466,7 +410,7 @@ if uploaded:
         st.session_state["elapsed"] = elapsed
 
 # Render if we have a summary in state
-if "summary" in st.session_state and st.session_state["summary"]:
+if st.session_state.get("summary"):
     summary = st.session_state["summary"]
     text_data = st.session_state["doc_text"]
     score = st.session_state["score"]
@@ -535,7 +479,6 @@ if "summary" in st.session_state and st.session_state["summary"]:
             st.rerun()
 
         except Exception as e:
-            # audit error too
             try:
                 log_event("ERROR", reviewer.strip(), doc_id=doc_id, score=int(score), message=str(e)[:500])
             except Exception:
