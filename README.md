@@ -1,5 +1,3 @@
----
-
 ```md
 # 🧠 Human-in-the-Loop Document Summarizer
 
