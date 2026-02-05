@@ -1,164 +1,166 @@
-# Human-in-the-Loop Financial Document Summarizer
+---
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Streamlit](https://img.shields.io/badge/UI-Streamlit-red) ![LLM](https://img.shields.io/badge/LLM-OpenAI-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+```md
+# 🧠 Human-in-the-Loop Document Summarizer
 
-A governed AI workflow that summarizes financial PDFs using LLMs while enforcing:
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![UI](https://img.shields.io/badge/UI-Streamlit-red)
+![LLM](https://img.shields.io/badge/LLM-OpenAI-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-* deterministic scoring
-* human approval
-* audit logging
-* safe persistence
+An AI-powered document summarization system with human validation in the loop.  
+The system extracts PDF text, generates summaries, scores quality, and requires human approval before storing results.
 
-Designed for regulated environments where AI assists decisions but never replaces human authority.
-
-> **LLMs propose. Deterministic systems evaluate. Humans decide.**
+Designed for safe, accountable, real-world AI workflows.
 
 ---
 
-## Architecture
+## 🚀 Features
 
-<img src="assets/architecture.svg" width="1000"/>
+- 📄 PDF text extraction
+- 🤖 LLM-powered summarization
+- 📊 Quality scoring (coverage, clarity, language)
+- 👩‍⚖️ Human approval system
+- 🗄 PostgreSQL storage
+- 🔐 Secure environment config
+- 🌐 Streamlit interface
+- ☁️ Cloud-ready architecture
 
-### Mermaid Architecture Source
+---
 
-```mermaid
-graph TB
+## 🏗 Architecture
 
-subgraph Frontend_Layer
-UI["Streamlit UI<br>Upload PDF | Generate Summary<br>Score | Approve / Reject"]
-Reviewer["Human Reviewer<br>Final Authority"]
-UI --> Reviewer
-end
+![Architecture Diagram](assets/architecture.svg)
 
-subgraph Processing_Layer
-Upload["PDF Upload"]
-Extract["Text Extraction<br>pdfplumber"]
-Clean["Clean + Chunk Text"]
-Summ["Summarization Engine<br>HF Pipeline / OpenAI"]
-Score["Deterministic Scoring"]
-Upload --> Extract --> Clean --> Summ --> Score
-end
+**Pipeline**
 
-subgraph Governance_Layer
-Gate["Human Review Gate"]
-Decision{"Approve or Reject?"}
-Audit["Audit Logger"]
-Reviewer --> Gate
-Score --> Gate
-Gate --> Decision
-Decision --> Audit
-end
+PDF → Extraction → AI Summary → Scoring → Human Review → Database
 
-subgraph Data_Layer
-Approved[(approved_summaries)]
-Rejected[(rejected_summaries)]
-Events[(audit_events)]
-end
+Human oversight ensures reliable AI output.
 
-Decision -->|Approve| Approved
-Decision -->|Reject| Rejected
-Audit --> Events
+---
 
-classDef frontend fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#000;
-classDef processing fill:#dcfce7,stroke:#166534,stroke-width:2px,color:#000;
-classDef governance fill:#fef3c7,stroke:#92400e,stroke-width:2px,color:#000;
-classDef data fill:#fce7f3,stroke:#9d174d,stroke-width:2px,color:#000;
+## 📸 Screenshots
 
-class UI,Reviewer frontend;
-class Upload,Extract,Clean,Summ,Score processing;
-class Gate,Decision,Audit governance;
-class Approved,Rejected,Events data;
+| Interface | Review Panel |
+|----------|-------------|
+| ![](assets/screenshot1.png) | ![](assets/screenshot2.png) |
+
+---
+
+## 📂 Project Structure
+
 ```
 
+HumanInTheLoopDocSummarizer/
+├── app/
+│   ├── db.py
+│   ├── migrations.py
+│   └── roles.py
+├── assets/
+│   ├── architecture.svg
+│   ├── screenshot1.png
+│   └── screenshot2.png
+├── db_smoke.py
+├── keep_supabase_alive.py
+├── main.py
+├── streamlit_app.py
+├── score_logic.py
+├── schema.sql
+├── requirements.txt
+├── README.md
+├── .env
+├── .gitignore
+└── snapshots/
+
+````
+
 ---
 
-## Tech Stack
+## ⚙️ Installation
 
-* Python
-* Streamlit
-* OpenAI GPT-4o / HF pipeline
-* pdfplumber
-* PostgreSQL / Supabase
-* Deterministic scoring engine
-* Audit logging layer
-
----
-
-
----
-
-## Quick Start
+Clone repo:
 
 ```bash
-git clone https://github.com/yourname/project.git
-cd project
+git clone https://github.com/YOUR_USERNAME/HumanInTheLoopDocSummarizer.git
+cd HumanInTheLoopDocSummarizer
+````
 
+Create environment:
+
+```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate
+```
 
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
+```
+
+Create `.env` file:
+
+```env
+OPENAI_API_KEY=your_key
+DB_URL=your_database_url
+```
+
+Run app:
+
+```bash
 streamlit run streamlit_app.py
 ```
 
 ---
 
-## Folder Structure (Matches Your Repo)
+## 🧪 Use Cases
 
-```
-project/
-├── README.md
-├── requirements.txt
-├── schema.sql
-├── main.py
-├── streamlit_app.py
-├── score_logic.py
-├── db_smoke.py
-├── keep_supabase_alive.py
-└── assets/
-    ├── architecture.svg
-    └── screenshot1.png
-```
+* Financial document review
+* Healthcare compliance summaries
+* Legal analysis pipelines
+* Enterprise AI governance
+* Human-supervised automation
 
 ---
 
-## Impact
+## 🔐 Human-in-the-Loop Safety
 
-This project demonstrates production-safe AI patterns:
+This project prevents blind AI automation.
 
-✅ human authority over AI
-✅ deterministic validation over probabilistic trust
-✅ audit-ready architecture
-✅ enterprise AI governance
-✅ regulated-domain workflow design
+All AI summaries must be approved by a human before storage.
 
-This is not a chatbot demo.
-This is a governed AI system.
+✔ Reduces hallucination
+✔ Adds accountability
+✔ Ensures compliance
+✔ Builds AI trust
 
 ---
 
-## License
+## 📌 Future Improvements
 
-MIT
+* Batch document processing
+* Reviewer dashboard
+* Audit logging
+* Explainability layer
+* Model comparison system
 
 ---
 
+## 👩‍💻 Author
 
+Lavanya Srivastava
+AI Developer • Trainer • Human-centered AI Advocate
 
+---
 
+## 📄 License
 
-```
-assets/screenshot1.png
-![Screenshot 1](assets/screenshot1.png)
-![Screenshot 2](assets/screenshot2.png)
+MIT License
 
-```
-
-3. README already references it:
-
-```md
-![App Screenshot](assets/screenshot1.png)
 ```
 
 
 
-
+Best regards,
+```
