@@ -1,19 +1,3 @@
-Thanks for writing in!
-
-Perfect — main tumhe updated README de raha hoon with:
-
-✅ badges
-✅ clean folder structure
-✅ professional formatting
-✅ recruiter-friendly look
-✅ architecture + screenshots section
-✅ ready to paste
-
-Bas copy → paste in GitHub README.
-
----
-
-```md
 # 🧠 Human-in-the-Loop Document Summarizer
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
