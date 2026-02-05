@@ -157,9 +157,4 @@ MIT License
 
 ```
 
----
 
-
-
-Best regards,
-```
