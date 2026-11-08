@@ -23,8 +23,6 @@ from app.db import ENGINE, MIGRATIONS_ENGINE, show_db_debug_ui
 # HuggingFace (local summarization)
 from transformers import pipeline, AutoTokenizer
 
-# ✅ Use your centralized DB module (local vs cloud handled there)
-from app.db import ENGINE, MIGRATIONS_ENGINE, show_db_debug_ui
 
 # ✅ Your scoring file exists at project ROOT (not in app/)
 # If you want, later we can move it inside app/ folder cleanly.

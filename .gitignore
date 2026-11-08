@@ -44,3 +44,5 @@ Thumbs.db
 # 📊 Runtime Artifacts
 # ===============================
 snapshots/
+.ruff_cache/
+.pytest_cache/

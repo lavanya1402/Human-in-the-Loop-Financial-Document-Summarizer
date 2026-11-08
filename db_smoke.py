@@ -1,5 +1,7 @@
 # db_smoke.py
-import os, uuid, psycopg2
+import os
+import uuid
+import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
